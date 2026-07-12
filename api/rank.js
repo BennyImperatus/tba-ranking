@@ -1,25 +1,17 @@
 require('dotenv').config();
 const axios = require('axios');
 
-const SHARED_SECRET = process.env.SHARED_SECRET;
 const GROUP_ID = process.env.GROUP_ID;
 const OPEN_CLOUD_API_KEY = process.env.OPEN_CLOUD_API_KEY;
 const ROBLOX_COOKIE = process.env.ROBLOX_COOKIE;
-
-let cachedRoles = null;
-let cachedRolesAt = 0;
+const SHARED_SECRET = process.env.SHARED_SECRET;
 
 async function getGroupRoles() {
-	const now = Date.now();
-	if (cachedRoles && now - cachedRolesAt < 5 * 60 * 1000) return cachedRoles;
-
 	const response = await axios.get(
 		`https://apis.roblox.com/cloud/v2/groups/${GROUP_ID}/roles`,
 		{ headers: { 'x-api-key': OPEN_CLOUD_API_KEY } }
 	);
-	cachedRoles = response.data.groupRoles || response.data.roles || [];
-	cachedRolesAt = now;
-	return cachedRoles;
+	return response.data.groupRoles || response.data.roles || [];
 }
 
 async function getMembership(userId) {
@@ -96,29 +88,32 @@ async function promoteWithCookie(userId) {
 
 module.exports = async (req, res) => {
 	if (req.method !== 'POST') {
-		return res.status(405).json({ success: false, error: 'Methode nicht erlaubt' });
+		res.status(405).json({ success: false, error: 'Method not allowed' });
+		return;
 	}
 
-	const { secret, userId } = req.body;
+	const { secret, userId } = req.body || {};
 
 	if (secret !== SHARED_SECRET) {
-		return res.status(401).json({ success: false, error: 'Ungültiges Secret' });
+		res.status(200).json({ success: false, error: 'Ungültiges Secret' });
+		return;
 	}
 	if (!userId) {
-		return res.status(400).json({ success: false, error: 'userId fehlt' });
+		res.status(200).json({ success: false, error: 'userId fehlt' });
+		return;
 	}
 
 	try {
 		const newRoleId = await promoteWithOpenCloud(userId);
-		return res.json({ success: true, method: 'opencloud', newRoleId });
+		res.status(200).json({ success: true, method: 'opencloud', newRoleId });
 	} catch (openCloudError) {
 		console.warn(`Open Cloud fehlgeschlagen für ${userId}:`, openCloudError.message);
 		try {
 			const newRoleId = await promoteWithCookie(userId);
-			return res.json({ success: true, method: 'cookie', newRoleId });
+			res.status(200).json({ success: true, method: 'cookie', newRoleId });
 		} catch (cookieError) {
 			console.error(`Cookie-Fallback fehlgeschlagen für ${userId}:`, cookieError.message);
-			return res.status(500).json({
+			res.status(200).json({
 				success: false,
 				error: `Beide Methoden fehlgeschlagen: ${openCloudError.message} / ${cookieError.message}`,
 			});
