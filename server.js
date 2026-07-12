@@ -103,10 +103,10 @@ app.post('/rank', async (req, res) => {
 	const { secret, userId } = req.body;
 
 	if (secret !== SHARED_SECRET) {
-		return res.status(401).json({ success: false, error: 'Ungültiges Secret' });
+		return res.json({ success: false, error: 'Ungültiges Secret' });
 	}
 	if (!userId) {
-		return res.status(400).json({ success: false, error: 'userId fehlt' });
+		return res.json({ success: false, error: 'userId fehlt' });
 	}
 
 	try {
@@ -119,7 +119,7 @@ app.post('/rank', async (req, res) => {
 			return res.json({ success: true, method: 'cookie', newRoleId });
 		} catch (cookieError) {
 			console.error(`Cookie-Fallback fehlgeschlagen für ${userId}:`, cookieError.message);
-			return res.status(500).json({
+			return res.json({
 				success: false,
 				error: `Beide Methoden fehlgeschlagen: ${openCloudError.message} / ${cookieError.message}`,
 			});
