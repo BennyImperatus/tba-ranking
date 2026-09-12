@@ -1,4 +1,3 @@
-require('dotenv').config();
 const axios = require('axios');
 
 const GROUP_ID = process.env.GROUP_ID;
